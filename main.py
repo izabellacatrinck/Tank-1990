@@ -1,152 +1,55 @@
-from PIL import Image
-import pyxel
+import pygame
+from pygame.locals import *
+from tank import Tank
+from bullet import Bullet
+from block import Block
 
-def resize_image(src_path, dest_path, new_size):
-    image = Image.open(src_path)
-    resized_image = image.resize(new_size)
-    resized_image.save(dest_path)
+# Inicializando o Pygame
+pygame.init()
 
-# Redimensione as imagens antes de carregá-las no Pyxel
-resize_image("assets/tank.png", "assets/tank_resized.png", (16, 16))
-resize_image("assets/tank1.png", "assets/tank1_resized.png", (16, 16))
-resize_image("assets/tank2.png", "assets/tank2_resized.png", (16, 16))
-resize_image("assets/tank3.png", "assets/tank3_resized.png", (16, 16)) # Remova esta linha se você não tiver uma quarta imagem
-resize_image("assets/bullet.png", "assets/bullet_resized.png", (16, 16))
-resize_image("assets/wall_orginal.bmp", "assets/block_resized.png", (16, 16))
+# Definindo constantes para a largura e altura da tela
+SCREEN_WIDTH = 640
+SCREEN_HEIGHT = 640
 
-class Tank:
-    def __init__(self, x, y, image_index):
-        self.x = x
-        self.y = y
-        self.image_index = image_index
+# Criando a tela
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-    def draw(self):
-        if 0 <= self.image_index < len(pyxel.images):
-            pyxel.blt(
-                self.x,
-                self.y,
-                self.image_index,
-                0,
-                0,
-                16,
-                16,
-                0
-            )
+# Criando os objetos
+tank = Tank(50, 200)
+bullet = Bullet(-1, -1)
+blocks = [Block(60, 60), Block(150, 60), Block(240, 60)]
 
-    def move(self, dx, dy):
-        new_x = self.x + dx
-        new_y = self.y + dy
+# Loop principal do jogo
+running = True
+while running:
+    # Preenchendo o fundo com preto
+    screen.fill((0, 0, 0))
 
-        if 0 < new_x < pyxel.width - 16 and 0 < new_y < pyxel.height - 16:
-            self.x = new_x
-            self.y = new_y
+    # Desenhando os objetos
+    tank.draw(screen)
+    bullet.draw(screen)
+    for block in blocks:
+        block.draw(screen)
 
-class Bullet:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.active = False
+    # Atualizando a tela
+    pygame.display.flip()
 
-    def draw(self):
-        if self.active:
-            pyxel.blt(
-                self.x,
-                self.y,
-                4,  # Altere o índice da imagem para 3
-                0,
-                0,
-                16,
-                16,
-                0
-            )
+    # Lidando com eventos
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            running = False
+        elif event.type == KEYDOWN:
+            if event.key == K_LEFT:
+                tank.move(-2, 0)
+            elif event.key == K_RIGHT:
+                tank.move(2, 0)
+            elif event.key == K_SPACE:
+                if not bullet.active:
+                    bullet.active = True
+                    bullet.x = tank.x
+                    bullet.y = tank.y
 
-    def move(self):
-        if self.active:
-            self.y -= 4
-            if self.y < 0:
-                self.active = False
+    # Movendo a bala
+    bullet.move()
 
-class Block:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def draw(self):
-        pyxel.blt(
-            self.x,
-            self.y,
-            5,  # Altere o índice da imagem para 4
-            0,
-            0,
-            16,
-            16,
-            0
-        )
-
-class TankGame:
-    def __init__(self):
-        pyxel.init(320, 240, fps=30)
-
-        # Carregando imagens redimensionadas
-        pyxel.images[0].load(0, 0, "assets/tank_resized.png")
-        pyxel.images[1].load(0, 0, "assets/tank1_resized.png")
-        pyxel.images[2].load(0, 0, "assets/tank2_resized.png")
-        pyxel.images[3].load(0, 0, "assets/tank3_resized.png") # Remova esta linha se você não tiver uma quarta imagem
-        pyxel.images[4].load(0, 0, "assets/bullet_resized.png")
-        pyxel.images[5].load(0, 0, "assets/block_resized.png")
-
-        self.tanks = [Tank(50, 200, 0), Tank(120, 200, 1), Tank(190, 200, 2)]
-        self.bullet = Bullet(-1, -1)
-        self.blocks = [Block(60, 60), Block(150, 60), Block(240, 60)]
-        self.score = 0
-        self.current_tank = 0
-        pyxel.run(self.update, self.draw)
-
-    def update(self):
-        self.tanks[self.current_tank].move(0, 0)
-        self.bullet.move()
-        self.handle_input()
-        self.check_collisions()
-
-    def draw(self):
-        pyxel.cls(0)
-        self.tanks[self.current_tank].draw()
-        self.bullet.draw()
-        for block in self.blocks:
-            block.draw()
-        pyxel.text(10, 10, f"Score: {self.score}", 7)
-
-    def handle_input(self):
-        if pyxel.btn(pyxel.KEY_LEFT) and self.tanks[self.current_tank].x > 0:
-            self.tanks[self.current_tank].move(-2, 0)
-        elif pyxel.btn(pyxel.KEY_RIGHT) and self.tanks[self.current_tank].x < pyxel.width - 16:
-            self.tanks[self.current_tank].move(2, 0)
-
-        if pyxel.btn(pyxel.KEY_UP):
-            self.current_tank = 0
-        elif pyxel.btn(pyxel.KEY_RIGHT):
-            self.current_tank = 1
-        elif pyxel.btn(pyxel.KEY_DOWN):
-            self.current_tank = 2
-        elif pyxel.btn(pyxel.KEY_LEFT):
-            self.current_tank = 3 if len(self.tanks) > 3 else 0
-
-        if pyxel.btnp(pyxel.KEY_SPACE) and not self.bullet.active:
-            self.bullet.active = True
-            self.bullet.x = self.tanks[self.current_tank].x
-            self.bullet.y = self.tanks[self.current_tank].y
-
-    def check_collisions(self):
-        for block in self.blocks:
-            if (
-                self.bullet.x + 3 >= block.x
-                and self.bullet.x <= block.x + 16
-                and self.bullet.y <= block.y + 16
-                and self.bullet.y + 3 >= block.y
-            ):
-                self.bullet.active = False
-                self.blocks.remove(block)
-                self.score += 10
-
-if __name__ == "__main__":
-    TankGame()
+pygame.quit()
